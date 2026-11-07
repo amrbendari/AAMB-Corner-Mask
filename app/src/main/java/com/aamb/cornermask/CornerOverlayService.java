@@ -64,7 +64,8 @@ public class CornerOverlayService extends Service {
         CornerView(Context context) {
             super(context);
             radius = 18f * getResources().getDisplayMetrics().density;
-            paint.setColor(Color.BLACK);
+            // 75% transparent black (alpha 64/255) for a softer corner mask.
+            paint.setColor(Color.argb(64, 0, 0, 0));
             paint.setStyle(Paint.Style.FILL);
             paint.setAntiAlias(true);
             setWillNotDraw(false);
@@ -82,8 +83,6 @@ public class CornerOverlayService extends Service {
             float h = getHeight();
             if (w <= 0f || h <= 0f) return;
 
-            // Extend the outer contour beyond the view edge so no translucent
-            // hairline appears along the display boundary.
             outside.reset();
             outside.setFillType(Path.FillType.EVEN_ODD);
             outside.addRect(-1f, -1f, w + 1f, h + 1f, Path.Direction.CW);
