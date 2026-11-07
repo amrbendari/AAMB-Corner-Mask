@@ -5,6 +5,10 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
@@ -25,11 +29,17 @@ public class MainActivity extends AppCompatActivity {
     private static final String PREFS = "aamb_settings";
     private static final String KEY_RADIUS = "corner_radius";
     private static final String KEY_DARK = "dark_mode";
+    private static final String KEY_OPACITY = "edge_opacity";
+    private static final String KEY_DARKNESS = "edge_darkness";
+    private static final String KEY_AUTO_LIGHT = "auto_light";
 
     private SharedPreferences prefs;
     private TextView status;
     private TextView radiusValue;
     private Slider radiusSlider;
+    private SensorManager sensorManager;
+    private Sensor lightSensor;
+    private boolean autoLight;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -101,6 +111,56 @@ public class MainActivity extends AppCompatActivity {
         radiusCard.addView(radiusBox);
         content.addView(radiusCard, params(0, 0, 0, 16));
 
+
+        MaterialCardView edgeCard = card();
+        LinearLayout edgeBox = column();
+        edgeBox.setPadding(dp(18), dp(16), dp(18), dp(14));
+        edgeBox.addView(text("مظهر الحواف", 17, true));
+        Slider opacitySlider = new Slider(this);
+        opacitySlider.setValueFrom(0f); opacitySlider.setValueTo(100f); opacitySlider.setStepSize(1f);
+        opacitySlider.setValue(prefs.getInt(KEY_OPACITY, 100));
+        TextView opacityLabel = text("شفافية الحواف: " + prefs.getInt(KEY_OPACITY, 100) + "%", 14, false);
+        edgeBox.addView(opacityLabel); edgeBox.addView(opacitySlider);
+        Slider darknessSlider = new Slider(this);
+        darknessSlider.setValueFrom(0f); darknessSlider.setValueTo(100f); darknessSlider.setStepSize(1f);
+        darknessSlider.setValue(prefs.getInt(KEY_DARKNESS, 100));
+        TextView darknessLabel = text("درجة السواد: " + prefs.getInt(KEY_DARKNESS, 100) + "%", 14, false);
+        edgeBox.addView(darknessLabel); edgeBox.addView(darknessSlider);
+        opacitySlider.addOnChangeListener((s, value, fromUser) -> {
+            int v = (int)value; opacityLabel.setText("شفافية الحواف: " + v + "%");
+            if (fromUser) { prefs.edit().putInt(KEY_OPACITY, v).apply(); applyEdgeStyle(); }
+        });
+        darknessSlider.addOnChangeListener((s, value, fromUser) -> {
+            int v = (int)value; darknessLabel.setText("درجة السواد: " + v + "%");
+            if (fromUser) { prefs.edit().putInt(KEY_DARKNESS, v).apply(); applyEdgeStyle(); }
+        });
+        edgeCard.addView(edgeBox);
+        content.addView(edgeCard, params(0, 0, 0, 16));
+
+        MaterialCardView autoCard = card();
+        LinearLayout autoRow = new LinearLayout(this);
+        autoRow.setGravity(Gravity.CENTER_VERTICAL);
+        autoRow.setPadding(dp(18), dp(8), dp(12), dp(8));
+        LinearLayout autoLabels = column();
+        autoLabels.addView(text("الوضع حسب إضاءة الجهاز", 16, true));
+        TextView autoHint = text("التبديل تلقائيًا حسب مستشعر الضوء", 12, false);
+        autoHint.setAlpha(0.7f); autoLabels.addView(autoHint);
+        autoRow.addView(autoLabels, new LinearLayout.LayoutParams(0, -2, 1f));
+        SwitchMaterial autoSwitch = new SwitchMaterial(this);
+        autoLight = prefs.getBoolean(KEY_AUTO_LIGHT, false);
+        autoSwitch.setChecked(autoLight);
+        autoRow.addView(autoSwitch);
+        autoSwitch.setOnCheckedChangeListener((button, checked) -> {
+            autoLight = checked; prefs.edit().putBoolean(KEY_AUTO_LIGHT, checked).apply();
+            if (checked) startLightDetection(); else {
+                stopLightDetection();
+                AppCompatDelegate.setDefaultNightMode(prefs.getBoolean(KEY_DARK, false)
+                    ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO);
+            }
+        });
+        autoCard.addView(autoRow);
+        content.addView(autoCard, params(0, 0, 0, 16));
+
         MaterialCardView appearanceCard = card();
         LinearLayout appearance = new LinearLayout(this);
         appearance.setOrientation(LinearLayout.HORIZONTAL);
@@ -117,6 +177,7 @@ public class MainActivity extends AppCompatActivity {
         appearance.addView(darkSwitch);
         darkSwitch.setOnCheckedChangeListener((button, checked) -> {
             prefs.edit().putBoolean(KEY_DARK, checked).apply();
+            if (!autoLight) {
             AppCompatDelegate.setDefaultNightMode(checked
                 ? AppCompatDelegate.MODE_NIGHT_YES
                 : AppCompatDelegate.MODE_NIGHT_NO);
@@ -156,6 +217,8 @@ public class MainActivity extends AppCompatActivity {
         }
         Intent service = new Intent(this, CornerOverlayService.class);
         service.putExtra(KEY_RADIUS, prefs.getFloat(KEY_RADIUS, 18f));
+        service.putExtra("edge_opacity", prefs.getInt(KEY_OPACITY, 100));
+        service.putExtra("edge_darkness", prefs.getInt(KEY_DARKNESS, 100));
         startService(service);
         status.setText("الحواف مفعّلة");
     }
@@ -165,8 +228,55 @@ public class MainActivity extends AppCompatActivity {
         if (Settings.canDrawOverlays(this)) {
             Intent service = new Intent(this, CornerOverlayService.class);
             service.putExtra(KEY_RADIUS, radius);
+            service.putExtra("edge_opacity", prefs.getInt(KEY_OPACITY, 100));
+            service.putExtra("edge_darkness", prefs.getInt(KEY_DARKNESS, 100));
             startService(service);
         }
+    }
+
+
+    private void applyEdgeStyle() {
+        if (Settings.canDrawOverlays(this)) {
+            Intent service = new Intent(this, CornerOverlayService.class);
+            service.putExtra("edge_opacity", prefs.getInt(KEY_OPACITY, 100));
+            service.putExtra("edge_darkness", prefs.getInt(KEY_DARKNESS, 100));
+            service.putExtra(KEY_RADIUS, prefs.getFloat(KEY_RADIUS, 18f));
+            startService(service);
+        }
+    }
+
+    private void startLightDetection() {
+        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+        if (sensorManager == null) return;
+        lightSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
+        if (lightSensor == null) {
+            status.setText("مستشعر الإضاءة غير متاح؛ استخدم الوضع اليدوي");
+            return;
+        }
+        sensorManager.registerListener(lightListener, lightSensor, SensorManager.SENSOR_DELAY_NORMAL);
+    }
+
+    private void stopLightDetection() {
+        if (sensorManager != null) sensorManager.unregisterListener(lightListener);
+    }
+
+    private final SensorEventListener lightListener = new SensorEventListener() {
+        @Override public void onSensorChanged(SensorEvent event) {
+            boolean dark = event.values[0] < 25f;
+            AppCompatDelegate.setDefaultNightMode(dark
+                ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO);
+        }
+        @Override public void onAccuracyChanged(Sensor sensor, int accuracy) { }
+    };
+
+    @Override protected void onResume() {
+        super.onResume();
+        if (autoLight) startLightDetection();
+    }
+
+    @Override protected void onPause() {
+        stopLightDetection();
+        super.onPause();
     }
 
     private MaterialCardView card() {
