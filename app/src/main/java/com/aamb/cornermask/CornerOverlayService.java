@@ -22,7 +22,6 @@ public class CornerOverlayService extends Service {
         super.onCreate();
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         cornerView = new CornerView(this);
-
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -37,6 +36,14 @@ public class CornerOverlayService extends Service {
     }
 
     @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent != null && intent.hasExtra("corner_radius") && cornerView != null) {
+            cornerView.setRadius(intent.getFloatExtra("corner_radius", 18f));
+        }
+        return START_STICKY;
+    }
+
+    @Override
     public void onDestroy() {
         if (cornerView != null && windowManager != null) {
             windowManager.removeView(cornerView);
@@ -46,13 +53,11 @@ public class CornerOverlayService extends Service {
     }
 
     @Override
-    public IBinder onBind(Intent intent) {
-        return null;
-    }
+    public IBinder onBind(Intent intent) { return null; }
 
     private static class CornerView extends View {
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final float radius;
+        private float radius;
 
         CornerView(Context context) {
             super(context);
@@ -62,19 +67,21 @@ public class CornerOverlayService extends Service {
             setLayerType(View.LAYER_TYPE_SOFTWARE, null);
         }
 
+        void setRadius(float dp) {
+            radius = dp * getResources().getDisplayMetrics().density;
+            invalidate();
+        }
+
         @Override
         protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
             float w = getWidth();
             float h = getHeight();
-
             Path outside = new Path();
             outside.setFillType(Path.FillType.EVEN_ODD);
             outside.addRect(0f, 0f, w, h, Path.Direction.CW);
-            outside.addRoundRect(
-                new RectF(0f, 0f, w, h),
-                radius, radius, Path.Direction.CCW
-            );
+            outside.addRoundRect(new RectF(0f, 0f, w, h),
+                radius, radius, Path.Direction.CCW);
             canvas.drawPath(outside, paint);
         }
     }
