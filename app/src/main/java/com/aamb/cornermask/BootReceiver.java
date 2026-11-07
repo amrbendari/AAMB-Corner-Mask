@@ -22,6 +22,12 @@ public class BootReceiver extends BroadcastReceiver {
         service.putExtra(KEY_RADIUS, prefs.getFloat(KEY_RADIUS, 18f));
         service.putExtra("edge_opacity", prefs.getInt("edge_opacity", 100));
         service.putExtra("edge_darkness", prefs.getInt("edge_darkness", 100));
+        service.putExtra("edge_brightness", prefs.getInt("edge_brightness", 50));
+        service.putExtra("edge_contrast", prefs.getInt("edge_contrast", 100));
+        service.putExtra("corner_top_left", prefs.getBoolean("corner_top_left", true));
+        service.putExtra("corner_top_right", prefs.getBoolean("corner_top_right", true));
+        service.putExtra("corner_bottom_right", prefs.getBoolean("corner_bottom_right", true));
+        service.putExtra("corner_bottom_left", prefs.getBoolean("corner_bottom_left", true));
         try {
             context.startService(service);
         } catch (IllegalStateException ignored) {
