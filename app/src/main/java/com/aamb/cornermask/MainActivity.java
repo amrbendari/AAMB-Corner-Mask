@@ -169,7 +169,7 @@ public class MainActivity extends AppCompatActivity {
         appearance.addView(text("مظهر التطبيق", 16, true), new LinearLayout.LayoutParams(0, -2, 1f));
         MaterialButton themeButton = new MaterialButton(this);
         themeButton.setText("");
-        themeButton.setIconResource(android.R.drawable.ic_menu_day);
+        themeButton.setIconResource(android.R.drawable.ic_menu_manage);
         themeButton.setContentDescription(tr("اختيار مظهر التطبيق"));
         themeButton.setMinWidth(dp(52));
         appearance.addView(themeButton);
@@ -337,8 +337,6 @@ public class MainActivity extends AppCompatActivity {
             case "درجة تدوير الحواف": return "Corner radius";
             case "من 0 إلى 40 dp": return "From 0 to 40 dp";
             case "مظهر الحواف": return "Corner appearance";
-            case "الوضع حسب إضاءة الجهاز": return "Automatic lighting mode";
-            case "التبديل تلقائيًا حسب مستشعر الضوء": return "Switch automatically using the light sensor";
             case "مظهر التطبيق": return "App appearance";
             case "اختيار مظهر التطبيق": return "Choose app appearance";
             case "وضع الجهاز": return "System default";
