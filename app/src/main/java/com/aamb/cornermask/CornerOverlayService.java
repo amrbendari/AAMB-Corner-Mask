@@ -47,12 +47,18 @@ public class CornerOverlayService extends Service {
         if (intent != null && cornerView != null) {
             if (intent.hasExtra("corner_radius"))
                 cornerView.setRadius(intent.getFloatExtra("corner_radius", 18f));
-            if (intent.hasExtra("edge_opacity") || intent.hasExtra("edge_darkness")) {
-                cornerView.setEdgeStyle(
-                    intent.getIntExtra("edge_opacity", 100),
-                    intent.getIntExtra("edge_darkness", 100)
-                );
-            }
+            cornerView.setEdgeStyle(
+                intent.getIntExtra("edge_opacity", 100),
+                intent.getIntExtra("edge_darkness", 100),
+                intent.getIntExtra("edge_brightness", 50),
+                intent.getIntExtra("edge_contrast", 100)
+            );
+            cornerView.setCorners(
+                intent.getBooleanExtra("corner_top_left", true),
+                intent.getBooleanExtra("corner_top_right", true),
+                intent.getBooleanExtra("corner_bottom_right", true),
+                intent.getBooleanExtra("corner_bottom_left", true)
+            );
         }
         return START_STICKY;
     }
@@ -76,6 +82,9 @@ public class CornerOverlayService extends Service {
         private float radius;
         private int edgeOpacity = 100;
         private int edgeDarkness = 100;
+        private int edgeBrightness = 50;
+        private int edgeContrast = 100;
+        private boolean topRight = true, topLeft = true, bottomRight = true, bottomLeft = true;
 
         CornerView(Context context) {
             super(context);
@@ -97,12 +106,22 @@ public class CornerOverlayService extends Service {
             invalidate();
         }
 
-        void setEdgeStyle(int opacity, int darkness) {
+        void setEdgeStyle(int opacity, int darkness, int brightness, int contrast) {
             edgeOpacity = Math.max(0, Math.min(100, opacity));
             edgeDarkness = Math.max(0, Math.min(100, darkness));
-            int channel = 255 - Math.round(edgeDarkness * 2.55f);
+            edgeBrightness = Math.max(0, Math.min(100, brightness));
+            edgeContrast = Math.max(0, Math.min(200, contrast));
+            float channel = 255f - edgeDarkness * 2.55f;
+            channel += (edgeBrightness - 50) * 2.55f;
+            channel = (channel - 128f) * (edgeContrast / 100f) + 128f;
+            int value = Math.max(0, Math.min(255, Math.round(channel)));
             int alpha = Math.round(edgeOpacity * 2.55f);
-            paint.setColor(Color.argb(alpha, channel, channel, channel));
+            paint.setColor(Color.argb(alpha, value, value, value));
+            invalidate();
+        }
+
+        void setCorners(boolean tl, boolean tr, boolean br, boolean bl) {
+            topLeft = tl; topRight = tr; bottomRight = br; bottomLeft = bl;
             invalidate();
         }
 
@@ -119,7 +138,13 @@ public class CornerOverlayService extends Service {
 
             innerBounds.set(0f, 0f, w, h);
             float r = Math.min(radius, Math.min(w, h) / 2f);
-            outside.addRoundRect(innerBounds, r, r, Path.Direction.CCW);
+            float[] cornerRadii = new float[] {
+                topLeft ? r : 0f, topLeft ? r : 0f,
+                topRight ? r : 0f, topRight ? r : 0f,
+                bottomRight ? r : 0f, bottomRight ? r : 0f,
+                bottomLeft ? r : 0f, bottomLeft ? r : 0f
+            };
+            outside.addRoundRect(innerBounds, cornerRadii, Path.Direction.CCW);
 
             canvas.drawPath(outside, paint);
         }
