@@ -32,6 +32,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String KEY_OPACITY = "edge_opacity";
     private static final String KEY_DARKNESS = "edge_darkness";
     private static final String KEY_AUTO_LIGHT = "auto_light";
+    private static final String KEY_LANGUAGE = "language";
 
     private SharedPreferences prefs;
     private TextView status;
@@ -55,7 +56,7 @@ public class MainActivity extends AppCompatActivity {
 
         MaterialToolbar toolbar = new MaterialToolbar(this);
         toolbar.setTitle("AAMB");
-        toolbar.setSubtitle("Corner Mask");
+        toolbar.setSubtitle(tr("Corner Mask"));
         toolbar.setElevation(dp(2));
         root.addView(toolbar, new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, dp(64)));
@@ -127,11 +128,11 @@ public class MainActivity extends AppCompatActivity {
         TextView darknessLabel = text("درجة السواد: " + prefs.getInt(KEY_DARKNESS, 100) + "%", 14, false);
         edgeBox.addView(darknessLabel); edgeBox.addView(darknessSlider);
         opacitySlider.addOnChangeListener((s, value, fromUser) -> {
-            int v = (int)value; opacityLabel.setText("شفافية الحواف: " + v + "%");
+            int v = (int)value; opacityLabel.setText(prefs.getString(KEY_LANGUAGE, "ar").equals("ar") ? "شفافية الحواف: " + v + "%" : "Edge opacity: " + v + "%");
             if (fromUser) { prefs.edit().putInt(KEY_OPACITY, v).apply(); applyEdgeStyle(); }
         });
         darknessSlider.addOnChangeListener((s, value, fromUser) -> {
-            int v = (int)value; darknessLabel.setText("درجة السواد: " + v + "%");
+            int v = (int)value; darknessLabel.setText(prefs.getString(KEY_LANGUAGE, "ar").equals("ar") ? "درجة السواد: " + v + "%" : "Black level: " + v + "%");
             if (fromUser) { prefs.edit().putInt(KEY_DARKNESS, v).apply(); applyEdgeStyle(); }
         });
         edgeCard.addView(edgeBox);
@@ -181,26 +182,43 @@ public class MainActivity extends AppCompatActivity {
             AppCompatDelegate.setDefaultNightMode(checked
                 ? AppCompatDelegate.MODE_NIGHT_YES
                 : AppCompatDelegate.MODE_NIGHT_NO);
+            }
         });
         appearanceCard.addView(appearance);
         content.addView(appearanceCard, params(0, 0, 0, 22));
+
+        MaterialCardView languageCard = card();
+        LinearLayout languageRow = new LinearLayout(this);
+        languageRow.setGravity(Gravity.CENTER_VERTICAL);
+        languageRow.setPadding(dp(18), dp(8), dp(12), dp(8));
+        languageRow.addView(text(tr("لغة التطبيق"), 16, true), new LinearLayout.LayoutParams(0, -2, 1f));
+        MaterialButton languageButton = new MaterialButton(this);
+        languageButton.setText("العربية / English");
+        languageButton.setOnClickListener(v -> {
+            String next = prefs.getString(KEY_LANGUAGE, "ar").equals("ar") ? "en" : "ar";
+            prefs.edit().putString(KEY_LANGUAGE, next).apply();
+            recreate();
+        });
+        languageRow.addView(languageButton);
+        languageCard.addView(languageRow);
+        content.addView(languageCard, params(0, 0, 0, 16));
 
         status = text("جاهز للتشغيل", 14, false);
         status.setGravity(Gravity.CENTER);
         content.addView(status, params(0, 0, 0, 12));
 
         MaterialButton enable = new MaterialButton(this);
-        enable.setText("تشغيل الحواف");
+        enable.setText(tr("تشغيل الحواف"));
         enable.setIconResource(android.R.drawable.ic_media_play);
         enable.setOnClickListener(v -> enableMask());
         content.addView(enable, params(0, 0, 0, 10));
 
         MaterialButton disable = new MaterialButton(this);
-        disable.setText("إيقاف الحواف");
+        disable.setText(tr("إيقاف الحواف"));
         disable.setIconResource(android.R.drawable.ic_media_pause);
         disable.setOnClickListener(v -> {
             stopService(new Intent(this, CornerOverlayService.class));
-            status.setText("تم إيقاف الحواف");
+            status.setText(tr("تم إيقاف الحواف"));
         });
         content.addView(disable);
 
@@ -212,7 +230,7 @@ public class MainActivity extends AppCompatActivity {
             Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                 Uri.parse("package:" + getPackageName()));
             startActivity(intent);
-            status.setText("اسمح للتطبيق بالظهور فوق التطبيقات");
+            status.setText(tr("اسمح للتطبيق بالظهور فوق التطبيقات"));
             return;
         }
         Intent service = new Intent(this, CornerOverlayService.class);
@@ -220,7 +238,7 @@ public class MainActivity extends AppCompatActivity {
         service.putExtra("edge_opacity", prefs.getInt(KEY_OPACITY, 100));
         service.putExtra("edge_darkness", prefs.getInt(KEY_DARKNESS, 100));
         startService(service);
-        status.setText("الحواف مفعّلة");
+        status.setText(tr("الحواف مفعّلة"));
     }
 
     private void applyRadius(float radius) {
@@ -250,7 +268,7 @@ public class MainActivity extends AppCompatActivity {
         if (sensorManager == null) return;
         lightSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
         if (lightSensor == null) {
-            status.setText("مستشعر الإضاءة غير متاح؛ استخدم الوضع اليدوي");
+            status.setText(tr("مستشعر الإضاءة غير متاح؛ استخدم الوضع اليدوي"));
             return;
         }
         sensorManager.registerListener(lightListener, lightSensor, SensorManager.SENSOR_DELAY_NORMAL);
@@ -293,9 +311,33 @@ public class MainActivity extends AppCompatActivity {
         return box;
     }
 
+    private String tr(String value) {
+        if (prefs == null || prefs.getString(KEY_LANGUAGE, "ar").equals("ar")) return value;
+        switch (value) {
+            case "خصص شكل زوايا شاشتك": return "Customize your screen corners";
+            case "تحكم في درجة التدوير ومظهر التطبيق.": return "Adjust corner radius and appearance.";
+            case "درجة تدوير الحواف": return "Corner radius";
+            case "من 0 إلى 40 dp": return "From 0 to 40 dp";
+            case "مظهر الحواف": return "Corner appearance";
+            case "الوضع حسب إضاءة الجهاز": return "Automatic lighting mode";
+            case "التبديل تلقائيًا حسب مستشعر الضوء": return "Switch automatically using the light sensor";
+            case "الوضع الليلي": return "Dark mode";
+            case "تبديل مظهر واجهة التطبيق": return "Change the app appearance";
+            case "لغة التطبيق": return "App language";
+            case "جاهز للتشغيل": return "Ready";
+            case "تشغيل الحواف": return "Enable corners";
+            case "إيقاف الحواف": return "Disable corners";
+            case "تم إيقاف الحواف": return "Corners disabled";
+            case "الحواف مفعّلة": return "Corners enabled";
+            case "اسمح للتطبيق بالظهور فوق التطبيقات": return "Allow display over other apps";
+            case "مستشعر الإضاءة غير متاح؛ استخدم الوضع اليدوي": return "Light sensor unavailable; use manual mode";
+            default: return value;
+        }
+    }
+
     private TextView text(String value, int size, boolean bold) {
         TextView view = new TextView(this);
-        view.setText(value);
+        view.setText(tr(value));
         view.setTextSize(size);
         if (bold) view.setTypeface(view.getTypeface(), android.graphics.Typeface.BOLD);
         return view;
