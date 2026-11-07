@@ -44,8 +44,15 @@ public class CornerOverlayService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (intent != null && intent.hasExtra("corner_radius") && cornerView != null) {
-            cornerView.setRadius(intent.getFloatExtra("corner_radius", 18f));
+        if (intent != null && cornerView != null) {
+            if (intent.hasExtra("corner_radius"))
+                cornerView.setRadius(intent.getFloatExtra("corner_radius", 18f));
+            if (intent.hasExtra("edge_opacity") || intent.hasExtra("edge_darkness")) {
+                cornerView.setEdgeStyle(
+                    intent.getIntExtra("edge_opacity", 100),
+                    intent.getIntExtra("edge_darkness", 100)
+                );
+            }
         }
         return START_STICKY;
     }
@@ -67,12 +74,13 @@ public class CornerOverlayService extends Service {
         private final Path outside = new Path();
         private final RectF innerBounds = new RectF();
         private float radius;
+        private int edgeOpacity = 100;
+        private int edgeDarkness = 100;
 
         CornerView(Context context) {
             super(context);
             radius = 18f * getResources().getDisplayMetrics().density;
-            // 75% transparent black (alpha 64/255) for a softer corner mask.
-            paint.setColor(Color.argb(255, 0, 0, 0));
+            paint.setColor(Color.BLACK);
             paint.setStyle(Paint.Style.FILL);
             paint.setAntiAlias(true);
             paint.setDither(true);
@@ -86,6 +94,15 @@ public class CornerOverlayService extends Service {
 
         void setRadius(float dp) {
             radius = dp * getResources().getDisplayMetrics().density;
+            invalidate();
+        }
+
+        void setEdgeStyle(int opacity, int darkness) {
+            edgeOpacity = Math.max(0, Math.min(100, opacity));
+            edgeDarkness = Math.max(0, Math.min(100, darkness));
+            int channel = 255 - Math.round(edgeDarkness * 2.55f);
+            int alpha = Math.round(edgeOpacity * 2.55f);
+            paint.setColor(Color.argb(alpha, channel, channel, channel));
             invalidate();
         }
 
