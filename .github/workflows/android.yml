@@ -1,8 +1,9 @@
 name: Build AAMB Corner Mask
 
-on:
+'on':
 push:
-branches: [main]
+branches:
+- main
 workflow_dispatch:
 
 jobs:
@@ -21,8 +22,11 @@ steps:
 
   - name: Set up Android SDK
     uses: android-actions/setup-android@v3
-    with:
-      packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+
+  - name: Install Android SDK packages
+    run: |
+      yes | sdkmanager --licenses
+      sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
   - name: Set up Gradle
     uses: gradle/actions/setup-gradle@v4
