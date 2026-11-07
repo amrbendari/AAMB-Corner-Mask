@@ -8,6 +8,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.PorterDuff;
 import android.graphics.RectF;
 import android.os.IBinder;
 import android.view.Gravity;
@@ -200,6 +201,8 @@ public class CornerOverlayService extends Service {
             super(context);
             this.corner = corner;
             setWillNotDraw(false);
+            // Keep the entire corner window transparent except for the mask path.
+            setBackgroundColor(Color.TRANSPARENT);
             setLayerType(View.LAYER_TYPE_HARDWARE, null);
             paint.setStyle(Paint.Style.FILL);
             paint.setColor(Color.BLACK);
@@ -216,6 +219,8 @@ public class CornerOverlayService extends Service {
         @Override
         protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
+            // Explicitly clear every pixel first: areas outside the curved mask stay empty.
+            canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
             float w = getWidth();
             float h = getHeight();
             if (w <= 0f || h <= 0f) return;
