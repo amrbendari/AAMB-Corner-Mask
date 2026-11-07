@@ -187,6 +187,24 @@ public class MainActivity extends AppCompatActivity {
         appearanceCard.addView(appearance);
         content.addView(appearanceCard, params(0, 0, 0, 22));
 
+        MaterialCardView bootCard = card();
+        LinearLayout bootRow = new LinearLayout(this);
+        bootRow.setGravity(Gravity.CENTER_VERTICAL);
+        bootRow.setPadding(dp(18), dp(8), dp(12), dp(8));
+        LinearLayout bootLabels = column();
+        bootLabels.addView(text("تشغيل التطبيق مع إعادة تشغيل الجهاز", 16, true));
+        TextView bootHint = text("تفعيل الحواف تلقائيًا بعد تشغيل الجهاز", 12, false);
+        bootHint.setAlpha(0.7f);
+        bootLabels.addView(bootHint);
+        bootRow.addView(bootLabels, new LinearLayout.LayoutParams(0, -2, 1f));
+        SwitchMaterial bootSwitch = new SwitchMaterial(this);
+        bootSwitch.setChecked(prefs.getBoolean("start_on_boot", false));
+        bootRow.addView(bootSwitch);
+        bootSwitch.setOnCheckedChangeListener((button, checked) ->
+            prefs.edit().putBoolean("start_on_boot", checked).apply());
+        bootCard.addView(bootRow);
+        content.addView(bootCard, params(0, 0, 0, 16));
+
         MaterialCardView languageCard = card();
         LinearLayout languageRow = new LinearLayout(this);
         languageRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -324,6 +342,8 @@ public class MainActivity extends AppCompatActivity {
             case "الوضع الليلي": return "Dark mode";
             case "تبديل مظهر واجهة التطبيق": return "Change the app appearance";
             case "لغة التطبيق": return "App language";
+            case "تشغيل التطبيق مع إعادة تشغيل الجهاز": return "Start on device boot";
+            case "تفعيل الحواف تلقائيًا بعد تشغيل الجهاز": return "Automatically enable corners after reboot";
             case "جاهز للتشغيل": return "Ready";
             case "تشغيل الحواف": return "Enable corners";
             case "إيقاف الحواف": return "Disable corners";
