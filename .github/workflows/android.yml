@@ -4,6 +4,7 @@ name: Build AAMB Corner Mask
   push:
     branches:
       - main
+      - reference-corner-overlays
   workflow_dispatch:
 
 jobs:
