@@ -65,7 +65,7 @@ public class CornerOverlayService extends Service {
             super(context);
             radius = 18f * getResources().getDisplayMetrics().density;
             // 75% transparent black (alpha 64/255) for a softer corner mask.
-            paint.setColor(Color.argb(64, 0, 0, 0));
+            paint.setColor(Color.argb(0, 0, 0, 0));
             paint.setStyle(Paint.Style.FILL);
             paint.setAntiAlias(true);
             setWillNotDraw(false);
