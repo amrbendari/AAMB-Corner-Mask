@@ -115,22 +115,22 @@ public class MainActivity extends AppCompatActivity {
         Slider opacitySlider = new Slider(this);
         opacitySlider.setValueFrom(0f); opacitySlider.setValueTo(100f); opacitySlider.setStepSize(1f);
         opacitySlider.setValue(prefs.getInt(KEY_OPACITY, 100));
-        TextView opacityLabel = text("شفافية الحواف: " + prefs.getInt(KEY_OPACITY, 100) + "%", 14, false);
+        TextView opacityLabel = text((prefs.getString(KEY_LANGUAGE, "ar").equals("ar") ? "شفافية الحواف: " : "Edge opacity: ") + prefs.getInt(KEY_OPACITY, 100) + "%", 14, false);
         edgeBox.addView(opacityLabel); edgeBox.addView(opacitySlider);
         Slider darknessSlider = new Slider(this);
         darknessSlider.setValueFrom(0f); darknessSlider.setValueTo(100f); darknessSlider.setStepSize(1f);
         darknessSlider.setValue(prefs.getInt(KEY_DARKNESS, 100));
-        TextView darknessLabel = text("درجة السواد: " + prefs.getInt(KEY_DARKNESS, 100) + "%", 14, false);
+        TextView darknessLabel = text((prefs.getString(KEY_LANGUAGE, "ar").equals("ar") ? "درجة السواد: " : "Black level: ") + prefs.getInt(KEY_DARKNESS, 100) + "%", 14, false);
         edgeBox.addView(darknessLabel); edgeBox.addView(darknessSlider);
         Slider brightnessSlider = new Slider(this);
         brightnessSlider.setValueFrom(0f); brightnessSlider.setValueTo(100f); brightnessSlider.setStepSize(1f);
         brightnessSlider.setValue(prefs.getInt(KEY_BRIGHTNESS, 50));
-        TextView brightnessLabel = text("Brightness الحواف: " + prefs.getInt(KEY_BRIGHTNESS, 50) + "%", 14, false);
+        TextView brightnessLabel = text((prefs.getString(KEY_LANGUAGE, "ar").equals("ar") ? "سطوع الحواف: " : "Edge brightness: ") + prefs.getInt(KEY_BRIGHTNESS, 50) + "%", 14, false);
         edgeBox.addView(brightnessLabel); edgeBox.addView(brightnessSlider);
         Slider contrastSlider = new Slider(this);
         contrastSlider.setValueFrom(0f); contrastSlider.setValueTo(200f); contrastSlider.setStepSize(1f);
         contrastSlider.setValue(prefs.getInt(KEY_CONTRAST, 100));
-        TextView contrastLabel = text("Contrast الحواف: " + prefs.getInt(KEY_CONTRAST, 100) + "%", 14, false);
+        TextView contrastLabel = text((prefs.getString(KEY_LANGUAGE, "ar").equals("ar") ? "تباين الحواف: " : "Edge contrast: ") + prefs.getInt(KEY_CONTRAST, 100) + "%", 14, false);
         edgeBox.addView(contrastLabel); edgeBox.addView(contrastSlider);
         opacitySlider.addOnChangeListener((s, value, fromUser) -> {
             int v = (int)value; opacityLabel.setText(prefs.getString(KEY_LANGUAGE, "ar").equals("ar") ? "شفافية الحواف: " + v + "%" : "Edge opacity: " + v + "%");
@@ -141,11 +141,11 @@ public class MainActivity extends AppCompatActivity {
             if (fromUser) { prefs.edit().putInt(KEY_DARKNESS, v).apply(); applyEdgeStyle(); }
         });
         brightnessSlider.addOnChangeListener((s, value, fromUser) -> {
-            int v = (int)value; brightnessLabel.setText("Brightness: " + v + "%");
+            int v = (int)value; brightnessLabel.setText((prefs.getString(KEY_LANGUAGE, "ar").equals("ar") ? "سطوع الحواف: " : "Edge brightness: ") + v + "%");
             if (fromUser) { prefs.edit().putInt(KEY_BRIGHTNESS, v).apply(); applyEdgeStyle(); }
         });
         contrastSlider.addOnChangeListener((s, value, fromUser) -> {
-            int v = (int)value; contrastLabel.setText("Contrast: " + v + "%");
+            int v = (int)value; contrastLabel.setText((prefs.getString(KEY_LANGUAGE, "ar").equals("ar") ? "تباين الحواف: " : "Edge contrast: ") + v + "%");
             if (fromUser) { prefs.edit().putInt(KEY_CONTRAST, v).apply(); applyEdgeStyle(); }
         });
         edgeCard.addView(edgeBox);
