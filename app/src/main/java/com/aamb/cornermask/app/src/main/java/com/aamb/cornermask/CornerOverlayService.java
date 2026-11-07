@@ -15,44 +15,37 @@ import android.view.WindowManager;
 
 public class CornerOverlayService extends Service {
 
-    private WindowManager windowManager;
-    private CornerView cornerView;
+    private WindowManager wm;
+    private CornerView view;
 
     @Override
     public void onCreate() {
         super.onCreate();
 
-        windowManager = (WindowManager) getSystemService(
-            Context.WINDOW_SERVICE
+        wm = (WindowManager) getSystemService(WINDOW_SERVICE);
+        view = new CornerView(this);
+
+        WindowManager.LayoutParams p = new WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            android.graphics.PixelFormat.TRANSLUCENT
         );
 
-        cornerView = new CornerView(this);
-
-        WindowManager.LayoutParams params =
-            new WindowManager.LayoutParams(
-                WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-                    | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                    | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-                    | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-                android.graphics.PixelFormat.TRANSLUCENT
-            );
-
-        params.gravity = Gravity.TOP | Gravity.START;
-
-        windowManager.addView(cornerView, params);
+        p.gravity = Gravity.TOP | Gravity.START;
+        wm.addView(view, p);
     }
 
     @Override
     public void onDestroy() {
-        super.onDestroy();
-
-        if (cornerView != null && windowManager != null) {
-            windowManager.removeView(cornerView);
-            cornerView = null;
+        if (view != null) {
+            wm.removeView(view);
+            view = null;
         }
+        super.onDestroy();
     }
 
     @Override
@@ -66,12 +59,12 @@ public class CornerOverlayService extends Service {
         private final Path path = new Path();
         private final float radius;
 
-        public CornerView(Context context) {
+        CornerView(Context context) {
             super(context);
-            setLayerType(View.LAYER_TYPE_SOFTWARE, null);
             radius = 20 * getResources().getDisplayMetrics().density;
             paint.setColor(Color.BLACK);
             paint.setStyle(Paint.Style.FILL);
+            setLayerType(View.LAYER_TYPE_SOFTWARE, null);
         }
 
         @Override
@@ -83,24 +76,14 @@ public class CornerOverlayService extends Service {
 
             path.reset();
 
-            RectF topLeft = new RectF(
-                -radius, -radius, radius, radius
-            );
-            RectF topRight = new RectF(
-                w - radius, -radius, w + radius, radius
-            );
-            RectF bottomLeft = new RectF(
-                -radius, h - radius, radius, h + radius
-            );
-            RectF bottomRight = new RectF(
-                w - radius, h - radius, w + radius, h + radius
+            path.addRoundRect(
+                new RectF(0, 0, w, h),
+                radius,
+                radius,
+                Path.Direction.CW
             );
 
-            path.addArc(topLeft, 0, 360);
-            path.addArc(topRight, 0, 360);
-            path.addArc(bottomLeft, 0, 360);
-            path.addArc(bottomRight, 0, 360);
-
+            canvas.drawColor(Color.TRANSPARENT);
             canvas.drawPath(path, paint);
         }
     }
