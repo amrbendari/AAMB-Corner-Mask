@@ -56,7 +56,7 @@ public class CornerOverlayService extends Service {
 
         CornerView(Context context) {
             super(context);
-            radius = 20f * getResources().getDisplayMetrics().density;
+            radius = 18f * getResources().getDisplayMetrics().density;
             paint.setColor(Color.BLACK);
             paint.setStyle(Paint.Style.FILL);
             setLayerType(View.LAYER_TYPE_SOFTWARE, null);
