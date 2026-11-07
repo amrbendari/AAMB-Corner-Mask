@@ -5,16 +5,13 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.PopupMenu;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
@@ -31,24 +28,22 @@ public class MainActivity extends AppCompatActivity {
     private static final String KEY_DARK = "dark_mode";
     private static final String KEY_OPACITY = "edge_opacity";
     private static final String KEY_DARKNESS = "edge_darkness";
-    private static final String KEY_AUTO_LIGHT = "auto_light";
+    private static final String KEY_BRIGHTNESS = "edge_brightness";
+    private static final String KEY_CONTRAST = "edge_contrast";
+    private static final String KEY_THEME_MODE = "theme_mode";
     private static final String KEY_LANGUAGE = "language";
 
     private SharedPreferences prefs;
     private TextView status;
     private TextView radiusValue;
     private Slider radiusSlider;
-    private SensorManager sensorManager;
-    private Sensor lightSensor;
-    private boolean autoLight;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
-        boolean dark = prefs.getBoolean(KEY_DARK, false);
-        AppCompatDelegate.setDefaultNightMode(
-            dark ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO
-        );
+        String savedTheme = prefs.getString(KEY_THEME_MODE,
+            prefs.getBoolean(KEY_DARK, false) ? "dark" : "light");
+        applyThemeMode(savedTheme);
         super.onCreate(savedInstanceState);
 
         LinearLayout root = new LinearLayout(this);
@@ -127,6 +122,16 @@ public class MainActivity extends AppCompatActivity {
         darknessSlider.setValue(prefs.getInt(KEY_DARKNESS, 100));
         TextView darknessLabel = text("درجة السواد: " + prefs.getInt(KEY_DARKNESS, 100) + "%", 14, false);
         edgeBox.addView(darknessLabel); edgeBox.addView(darknessSlider);
+        Slider brightnessSlider = new Slider(this);
+        brightnessSlider.setValueFrom(0f); brightnessSlider.setValueTo(100f); brightnessSlider.setStepSize(1f);
+        brightnessSlider.setValue(prefs.getInt(KEY_BRIGHTNESS, 50));
+        TextView brightnessLabel = text("Brightness الحواف: " + prefs.getInt(KEY_BRIGHTNESS, 50) + "%", 14, false);
+        edgeBox.addView(brightnessLabel); edgeBox.addView(brightnessSlider);
+        Slider contrastSlider = new Slider(this);
+        contrastSlider.setValueFrom(0f); contrastSlider.setValueTo(200f); contrastSlider.setStepSize(1f);
+        contrastSlider.setValue(prefs.getInt(KEY_CONTRAST, 100));
+        TextView contrastLabel = text("Contrast الحواف: " + prefs.getInt(KEY_CONTRAST, 100) + "%", 14, false);
+        edgeBox.addView(contrastLabel); edgeBox.addView(contrastSlider);
         opacitySlider.addOnChangeListener((s, value, fromUser) -> {
             int v = (int)value; opacityLabel.setText(prefs.getString(KEY_LANGUAGE, "ar").equals("ar") ? "شفافية الحواف: " + v + "%" : "Edge opacity: " + v + "%");
             if (fromUser) { prefs.edit().putInt(KEY_OPACITY, v).apply(); applyEdgeStyle(); }
@@ -135,54 +140,54 @@ public class MainActivity extends AppCompatActivity {
             int v = (int)value; darknessLabel.setText(prefs.getString(KEY_LANGUAGE, "ar").equals("ar") ? "درجة السواد: " + v + "%" : "Black level: " + v + "%");
             if (fromUser) { prefs.edit().putInt(KEY_DARKNESS, v).apply(); applyEdgeStyle(); }
         });
+        brightnessSlider.addOnChangeListener((s, value, fromUser) -> {
+            int v = (int)value; brightnessLabel.setText("Brightness: " + v + "%");
+            if (fromUser) { prefs.edit().putInt(KEY_BRIGHTNESS, v).apply(); applyEdgeStyle(); }
+        });
+        contrastSlider.addOnChangeListener((s, value, fromUser) -> {
+            int v = (int)value; contrastLabel.setText("Contrast: " + v + "%");
+            if (fromUser) { prefs.edit().putInt(KEY_CONTRAST, v).apply(); applyEdgeStyle(); }
+        });
         edgeCard.addView(edgeBox);
         content.addView(edgeCard, params(0, 0, 0, 16));
+        MaterialCardView cornersCard = card();
+        LinearLayout cornersBox = column();
+        cornersBox.setPadding(dp(18), dp(16), dp(18), dp(14));
+        cornersBox.addView(text("اختيار الحواف", 17, true));
+        addCornerSwitch(cornersBox, "العلوي جهة اليمين", "corner_top_right");
+        addCornerSwitch(cornersBox, "العلوي جهة اليسار", "corner_top_left");
+        addCornerSwitch(cornersBox, "السفلي جهة اليمين", "corner_bottom_right");
+        addCornerSwitch(cornersBox, "السفلي جهة اليسار", "corner_bottom_left");
+        cornersCard.addView(cornersBox);
+        content.addView(cornersCard, params(0, 0, 0, 16));
 
-        MaterialCardView autoCard = card();
-        LinearLayout autoRow = new LinearLayout(this);
-        autoRow.setGravity(Gravity.CENTER_VERTICAL);
-        autoRow.setPadding(dp(18), dp(8), dp(12), dp(8));
-        LinearLayout autoLabels = column();
-        autoLabels.addView(text("الوضع حسب إضاءة الجهاز", 16, true));
-        TextView autoHint = text("التبديل تلقائيًا حسب مستشعر الضوء", 12, false);
-        autoHint.setAlpha(0.7f); autoLabels.addView(autoHint);
-        autoRow.addView(autoLabels, new LinearLayout.LayoutParams(0, -2, 1f));
-        SwitchMaterial autoSwitch = new SwitchMaterial(this);
-        autoLight = prefs.getBoolean(KEY_AUTO_LIGHT, false);
-        autoSwitch.setChecked(autoLight);
-        autoRow.addView(autoSwitch);
-        autoSwitch.setOnCheckedChangeListener((button, checked) -> {
-            autoLight = checked; prefs.edit().putBoolean(KEY_AUTO_LIGHT, checked).apply();
-            if (checked) startLightDetection(); else {
-                stopLightDetection();
-                AppCompatDelegate.setDefaultNightMode(prefs.getBoolean(KEY_DARK, false)
-                    ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO);
-            }
-        });
-        autoCard.addView(autoRow);
-        content.addView(autoCard, params(0, 0, 0, 16));
 
         MaterialCardView appearanceCard = card();
         LinearLayout appearance = new LinearLayout(this);
-        appearance.setOrientation(LinearLayout.HORIZONTAL);
         appearance.setGravity(Gravity.CENTER_VERTICAL);
         appearance.setPadding(dp(18), dp(8), dp(12), dp(8));
-        LinearLayout labels = column();
-        labels.addView(text("الوضع الليلي", 16, true));
-        TextView modeHint = text("تبديل مظهر واجهة التطبيق", 12, false);
-        modeHint.setAlpha(0.7f);
-        labels.addView(modeHint);
-        appearance.addView(labels, new LinearLayout.LayoutParams(0, -2, 1f));
-        SwitchMaterial darkSwitch = new SwitchMaterial(this);
-        darkSwitch.setChecked(dark);
-        appearance.addView(darkSwitch);
-        darkSwitch.setOnCheckedChangeListener((button, checked) -> {
-            prefs.edit().putBoolean(KEY_DARK, checked).apply();
-            if (!autoLight) {
-            AppCompatDelegate.setDefaultNightMode(checked
-                ? AppCompatDelegate.MODE_NIGHT_YES
-                : AppCompatDelegate.MODE_NIGHT_NO);
-            }
+        appearance.addView(text("مظهر التطبيق", 16, true), new LinearLayout.LayoutParams(0, -2, 1f));
+        MaterialButton themeButton = new MaterialButton(this);
+        themeButton.setText("");
+        themeButton.setIconResource(android.R.drawable.ic_menu_day);
+        themeButton.setContentDescription(tr("اختيار مظهر التطبيق"));
+        themeButton.setMinWidth(dp(52));
+        appearance.addView(themeButton);
+        themeButton.setOnClickListener(anchor -> {
+            PopupMenu menu = new PopupMenu(this, themeButton);
+            menu.getMenu().add(0, 1, 0, tr("وضع الجهاز"));
+            menu.getMenu().add(0, 2, 1, tr("الوضع الفاتح"));
+            menu.getMenu().add(0, 3, 2, tr("الوضع الليلي"));
+            menu.setOnMenuItemClickListener(item -> {
+                String mode = item.getItemId() == 1 ? "system" :
+                    item.getItemId() == 2 ? "light" : "dark";
+                prefs.edit().putString(KEY_THEME_MODE, mode)
+                    .putBoolean(KEY_DARK, mode.equals("dark")).apply();
+                applyThemeMode(mode);
+                recreate();
+                return true;
+            });
+            menu.show();
         });
         appearanceCard.addView(appearance);
         content.addView(appearanceCard, params(0, 0, 0, 22));
@@ -252,9 +257,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         Intent service = new Intent(this, CornerOverlayService.class);
-        service.putExtra(KEY_RADIUS, prefs.getFloat(KEY_RADIUS, 18f));
-        service.putExtra("edge_opacity", prefs.getInt(KEY_OPACITY, 100));
-        service.putExtra("edge_darkness", prefs.getInt(KEY_DARKNESS, 100));
+        putAllSettings(service);
         startService(service);
         status.setText(tr("الحواف مفعّلة"));
     }
@@ -263,9 +266,8 @@ public class MainActivity extends AppCompatActivity {
         prefs.edit().putFloat(KEY_RADIUS, radius).apply();
         if (Settings.canDrawOverlays(this)) {
             Intent service = new Intent(this, CornerOverlayService.class);
+            putAllSettings(service);
             service.putExtra(KEY_RADIUS, radius);
-            service.putExtra("edge_opacity", prefs.getInt(KEY_OPACITY, 100));
-            service.putExtra("edge_darkness", prefs.getInt(KEY_DARKNESS, 100));
             startService(service);
         }
     }
@@ -274,45 +276,43 @@ public class MainActivity extends AppCompatActivity {
     private void applyEdgeStyle() {
         if (Settings.canDrawOverlays(this)) {
             Intent service = new Intent(this, CornerOverlayService.class);
-            service.putExtra("edge_opacity", prefs.getInt(KEY_OPACITY, 100));
-            service.putExtra("edge_darkness", prefs.getInt(KEY_DARKNESS, 100));
-            service.putExtra(KEY_RADIUS, prefs.getFloat(KEY_RADIUS, 18f));
+            putAllSettings(service);
             startService(service);
         }
     }
 
-    private void startLightDetection() {
-        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-        if (sensorManager == null) return;
-        lightSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
-        if (lightSensor == null) {
-            status.setText(tr("مستشعر الإضاءة غير متاح؛ استخدم الوضع اليدوي"));
-            return;
-        }
-        sensorManager.registerListener(lightListener, lightSensor, SensorManager.SENSOR_DELAY_NORMAL);
+    private void applyThemeMode(String mode) {
+        int nightMode = "system".equals(mode) ? AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM :
+            "dark".equals(mode) ? AppCompatDelegate.MODE_NIGHT_YES :
+            AppCompatDelegate.MODE_NIGHT_NO;
+        AppCompatDelegate.setDefaultNightMode(nightMode);
     }
 
-    private void stopLightDetection() {
-        if (sensorManager != null) sensorManager.unregisterListener(lightListener);
+    private void putAllSettings(Intent service) {
+        service.putExtra(KEY_RADIUS, prefs.getFloat(KEY_RADIUS, 18f));
+        service.putExtra(KEY_OPACITY, prefs.getInt(KEY_OPACITY, 100));
+        service.putExtra(KEY_DARKNESS, prefs.getInt(KEY_DARKNESS, 100));
+        service.putExtra(KEY_BRIGHTNESS, prefs.getInt(KEY_BRIGHTNESS, 50));
+        service.putExtra(KEY_CONTRAST, prefs.getInt(KEY_CONTRAST, 100));
+        service.putExtra("corner_top_right", prefs.getBoolean("corner_top_right", true));
+        service.putExtra("corner_top_left", prefs.getBoolean("corner_top_left", true));
+        service.putExtra("corner_bottom_right", prefs.getBoolean("corner_bottom_right", true));
+        service.putExtra("corner_bottom_left", prefs.getBoolean("corner_bottom_left", true));
     }
 
-    private final SensorEventListener lightListener = new SensorEventListener() {
-        @Override public void onSensorChanged(SensorEvent event) {
-            boolean dark = event.values[0] < 25f;
-            AppCompatDelegate.setDefaultNightMode(dark
-                ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO);
-        }
-        @Override public void onAccuracyChanged(Sensor sensor, int accuracy) { }
-    };
-
-    @Override protected void onResume() {
-        super.onResume();
-        if (autoLight) startLightDetection();
-    }
-
-    @Override protected void onPause() {
-        stopLightDetection();
-        super.onPause();
+    private void addCornerSwitch(LinearLayout parent, String label, String key) {
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(0, dp(5), 0, dp(5));
+        row.addView(text(label, 14, false), new LinearLayout.LayoutParams(0, -2, 1f));
+        SwitchMaterial toggle = new SwitchMaterial(this);
+        toggle.setChecked(prefs.getBoolean(key, true));
+        row.addView(toggle);
+        toggle.setOnCheckedChangeListener((button, checked) -> {
+            prefs.edit().putBoolean(key, checked).apply();
+            applyEdgeStyle();
+        });
+        parent.addView(row);
     }
 
     private MaterialCardView card() {
@@ -339,7 +339,16 @@ public class MainActivity extends AppCompatActivity {
             case "مظهر الحواف": return "Corner appearance";
             case "الوضع حسب إضاءة الجهاز": return "Automatic lighting mode";
             case "التبديل تلقائيًا حسب مستشعر الضوء": return "Switch automatically using the light sensor";
+            case "مظهر التطبيق": return "App appearance";
+            case "اختيار مظهر التطبيق": return "Choose app appearance";
+            case "وضع الجهاز": return "System default";
+            case "الوضع الفاتح": return "Light mode";
             case "الوضع الليلي": return "Dark mode";
+            case "اختيار الحواف": return "Select corners";
+            case "العلوي جهة اليمين": return "Top right";
+            case "العلوي جهة اليسار": return "Top left";
+            case "السفلي جهة اليمين": return "Bottom right";
+            case "السفلي جهة اليسار": return "Bottom left";
             case "تبديل مظهر واجهة التطبيق": return "Change the app appearance";
             case "لغة التطبيق": return "App language";
             case "تشغيل التطبيق مع إعادة تشغيل الجهاز": return "Start on device boot";
