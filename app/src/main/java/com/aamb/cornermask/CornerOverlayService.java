@@ -28,9 +28,16 @@ public class CornerOverlayService extends Service {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
                 | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             android.graphics.PixelFormat.TRANSLUCENT
         );
+        // Draw against the physical display edges, including areas normally
+        // reserved for system bars and display cutouts.
+        if (android.os.Build.VERSION.SDK_INT >= 28) {
+            params.layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+        }
         params.gravity = Gravity.TOP | Gravity.START;
         windowManager.addView(cornerView, params);
     }
@@ -68,7 +75,13 @@ public class CornerOverlayService extends Service {
             paint.setColor(Color.argb(255, 0, 0, 0));
             paint.setStyle(Paint.Style.FILL);
             paint.setAntiAlias(true);
+            paint.setDither(true);
             setWillNotDraw(false);
+            setSystemUiVisibility(
+                SYSTEM_UI_FLAG_LAYOUT_STABLE
+                    | SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    | SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+            );
         }
 
         void setRadius(float dp) {
