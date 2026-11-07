@@ -57,6 +57,8 @@ public class CornerOverlayService extends Service {
 
     private static class CornerView extends View {
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Path outside = new Path();
+        private final RectF innerBounds = new RectF();
         private float radius;
 
         CornerView(Context context) {
@@ -64,7 +66,8 @@ public class CornerOverlayService extends Service {
             radius = 18f * getResources().getDisplayMetrics().density;
             paint.setColor(Color.BLACK);
             paint.setStyle(Paint.Style.FILL);
-            setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+            paint.setAntiAlias(true);
+            setWillNotDraw(false);
         }
 
         void setRadius(float dp) {
@@ -77,11 +80,18 @@ public class CornerOverlayService extends Service {
             super.onDraw(canvas);
             float w = getWidth();
             float h = getHeight();
-            Path outside = new Path();
+            if (w <= 0f || h <= 0f) return;
+
+            // Extend the outer contour beyond the view edge so no translucent
+            // hairline appears along the display boundary.
+            outside.reset();
             outside.setFillType(Path.FillType.EVEN_ODD);
-            outside.addRect(0f, 0f, w, h, Path.Direction.CW);
-            outside.addRoundRect(new RectF(0f, 0f, w, h),
-                radius, radius, Path.Direction.CCW);
+            outside.addRect(-1f, -1f, w + 1f, h + 1f, Path.Direction.CW);
+
+            innerBounds.set(0f, 0f, w, h);
+            float r = Math.min(radius, Math.min(w, h) / 2f);
+            outside.addRoundRect(innerBounds, r, r, Path.Direction.CCW);
+
             canvas.drawPath(outside, paint);
         }
     }
